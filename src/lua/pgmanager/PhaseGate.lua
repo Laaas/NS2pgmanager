@@ -127,7 +127,7 @@ function PhaseGate:OnOrderChanged()
 	if order ~= nil then
 		if order:GetType() == kTechId.SetTarget then
 			local target = Shared.GetEntity(order:GetParam())
-			if target:isa "PhaseGate" then
+			if target and target:isa "PhaseGate" then
 				self.targetPG = order:GetParam()
 				self.linked   = true
 				ComputeProperties(self)
