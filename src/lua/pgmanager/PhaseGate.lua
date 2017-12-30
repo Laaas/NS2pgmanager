@@ -3,30 +3,33 @@ netvars.destLocationId      = nil
 netvars.destinationEndpoint = nil
 netvars.targetPG            = "entityid"
 
-AddMixinNetworkVars(OrdersMixin, networkVars)
+AddMixinNetworkVars(OrdersMixin, netvars)
 
 local old = PhaseGate.OnCreate
 function PhaseGate:OnCreate()
-	old(self)
-	InitMixin(self, OrdersMixin, {kMoveOrderCompleteDistance = kAIMoveOrderCompleteDistance})
 	if Server then
 		self:SetIncludeRelevancyMask(0)
 		self.timeOfLastPhase = -1000
 	end
+	old(self)
+	InitMixin(self, OrdersMixin, {kMoveOrderCompleteDistance = kAIMoveOrderCompleteDistance})
 end
 
 local function ComputeProperties(self)
 	local target = Shared.GetEntity(self.targetPG)
 
-	self.destinationEndpoint = target:GetOrigin()
-	self.targetYaw           = target:GetAngles().yaw
+	if target then
+		self.destinationEndpoint = target:GetOrigin()
+		self.targetYaw           = target:GetAngles().yaw
 
-	local location = GetLocationForPoint(self.destinationEndpoint)
-	if location then
-		self.destLocationId = location:GetId()
-	else
-		self.destLocationId = Entity.invalidId
+		local location = GetLocationForPoint(self.destinationEndpoint)
+		if location then
+			self.destLocationId = location:GetId()
+		else
+			self.destLocationId = Entity.invalidId
+		end
 	end
+
 	return true
 end
 
@@ -45,9 +48,77 @@ function PhaseGate:OnOverrideOrder(order)
 end
 
 function PhaseGate:Update()
-	self.phase = Shared.GetTime() < self.timeOfLastPhase + 0.3
+	if not self.timeOfLastPhase then self.timeOfLastPhase = -1000 end
+	self.phase   = Shared.GetTime() < self.timeOfLastPhase + 0.3
+
 	local target = Shared.GetEntity(self.targetPG)
-	self.linked = target and GetIsUnitActive(self) and self.deployed and target.deployed
+	self.linked  = target and GetIsUnitActive(self) and self.deployed and target.deployed
+
+	if not target and self.deployed and GetIsUnitActive(self) then -- automatically find an available PG
+		local all_pgs = GetEntitiesForTeam("PhaseGate", self:GetTeamNumber())
+
+		local sources = {}
+		for i = 1, #all_pgs do
+			local target = Shared.GetEntity(all_pgs[i].targetPG)
+			if target then
+				sources[target] = all_pgs[i]
+			end
+		end
+
+		local found_target = false
+		local found_source = false
+
+		-- find phase gate that doesn't have a source
+		for i = 1, #all_pgs do
+			local pg = all_pgs[i]
+			if pg ~= self and GetIsUnitActive(pg) and pg.deployed and not sources[pg] then
+				self.targetPG = pg:GetId()
+				self.linked   = true
+				ComputeProperties(self)
+				found_target = true
+				break
+			end
+		end
+
+		-- we need to find one, even if it's already occupied
+		if not found_target then
+			for i = 1, #all_pgs do
+				local pg = all_pgs[i]
+				if pg ~= self and GetIsUnitActive(pg) and pg.deployed then
+					self.targetPG = pg:GetId()
+					self.linked   = true
+					ComputeProperties(self)
+					break
+				end
+			end
+		end
+
+		-- find phase gate that doesn't have a target
+		for i = 1, #all_pgs do
+			local pg = all_pgs[i]
+			if pg ~= self and GetIsUnitActive(pg) and pg.deployed and not Shared.GetEntity(pg.targetPG) then
+				pg.targetPG = self:GetId()
+				pg.linked   = true
+				ComputeProperties(pg)
+				found_source = true
+				break
+			end
+		end
+
+		-- we need to find one, even if it's already occupied
+		if not found_source then
+			for i = #all_pgs, 1, -1 do
+				local pg = all_pgs[i]
+				if pg ~= self and GetIsUnitActive(pg) and pg.deployed then
+					pg.targetPG = self:GetId()
+					pg.linked   = true
+					ComputeProperties(pg)
+					break
+				end
+			end
+		end
+	end
+
 	return true
 end
 
@@ -55,18 +126,14 @@ function PhaseGate:OnOrderChanged()
 	local order = self:GetCurrentOrder()
 	if order ~= nil then
 		if order:GetType() == kTechId.SetTarget then
-			Log "Got SetTarget order"
 			local target = Shared.GetEntity(order:GetParam())
 			if target:isa "PhaseGate" then
 				self.targetPG = order:GetParam()
 				self.linked   = true
 				ComputeProperties(self)
-			else
-				Log("%s is not a phase gate!", target)
 			end
 			self:CompletedCurrentOrder()
 		else
-			Log "Got invalid order"
 			self:ClearCurrentOrder()
 		end
 	end
@@ -88,5 +155,5 @@ end
 
 local old = PhaseGate.SetIncludeRelevancyMask
 function PhaseGate:SetIncludeRelevancyMask(mask)
-	old(bit.bor(mask, kRelevantToTeam1Unit))
+	old(self, bit.bor(mask, kRelevantToTeam1Unit))
 end

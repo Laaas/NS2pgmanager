@@ -1,1 +1,1 @@
-kTechIdToMaterialOffset[kTechId.SetTarget] = 137
+debug.getupvalue(GetMaterialXYOffset, "kTechIdToMaterialOffset")[kTechId.SetTarget] = 137

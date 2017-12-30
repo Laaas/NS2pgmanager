@@ -1,7 +1,7 @@
 
 [master]
-name            = "[WIP] Phase Gate Manager"
+name            = "Phase Gate Manager"
 tags            = ["Must be run on server", "Gameplay tweak", "Tool"]
 autodescription = true
 description     = "README.md"
-preview         = "/dev/null"
+preview         = "preview.png"
