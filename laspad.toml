@@ -5,3 +5,10 @@ tags            = ["Must be run on server", "Gameplay tweak", "Tool"]
 autodescription = true
 description     = "README.md"
 preview         = "preview.png"
+
+[beta]
+name            = "Phase Gate Manager - Beta"
+tags            = ["Must be run on server", "Gameplay tweak", "Tool"]
+autodescription = true
+description     = "README.md"
+preview         = "preview.png"
