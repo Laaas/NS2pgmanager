@@ -99,15 +99,12 @@ function PhaseGate:Update()
 end
 
 function PhaseGate:OnOrderChanged()
-	do return end -- TODO: REMOVE
 	local order = self:GetCurrentOrder()
 	if order ~= nil then
 		if order:GetType() == kTechId.SetTarget then
 			local target = Shared.GetEntity(order:GetParam())
 			if target and target:isa "PhaseGate" then
-				self.targetPG = order:GetParam()
-				self.linked   = true
-				ComputeProperties(self)
+				table.insert(pg_order, self.pg_index+1, table.remove(pg_order, target.pg_index))
 			end
 			self:CompletedCurrentOrder()
 		else
