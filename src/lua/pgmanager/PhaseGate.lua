@@ -34,7 +34,7 @@ function PhaseGate:OnCreate()
 	if Server then
 		self:SetIncludeRelevancyMask(0)
 		self.timeOfLastPhase = -1000
-		table.insert(pg_order, self)
+		table.insert(pg_order, self:GetId())
 		self.pg_index = #pg_order
 	end
 	old(self)
@@ -67,7 +67,7 @@ function PhaseGate:Update()
 	if not self.timeOfLastPhase then self.timeOfLastPhase = -1000 end
 	self.phase = Shared.GetTime() < self.timeOfLastPhase + 0.3
 
-	if isActive(self) then
+	if self.deployed and GetIsUnitActive(self) then
 		local i = self.pg_index
 		while true do
 			if i == #pg_order then
@@ -78,10 +78,17 @@ function PhaseGate:Update()
 			if i == self.pg_index then
 				self.linked = false
 				break
-			elseif isActive(pg_order[i]) then
-				self.targetPG = pg_order[i]:GetId()
-				self.linked = true
-				break
+			else
+				local pg = Shared.GetEntity(pg_order[i])
+				if pg and pg.deployed and GetIsUnitActive(pg) then
+					local new = pg_order[i]
+					if new ~= self.targetPG then
+						self.targetPG = new
+						ComputeProperties(self)
+					end
+					self.linked = true
+					break
+				end
 			end
 		end
 	else
