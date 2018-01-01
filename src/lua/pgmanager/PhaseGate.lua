@@ -5,7 +5,9 @@ netvars.targetPG            = "entityid"
 
 AddMixinNetworkVars(OrdersMixin, netvars)
 
-local function ComputeProperties(self)
+local pg_order = {} -- Only for server
+
+local function computeProperties(self)
 	local target = Shared.GetEntity(self.targetPG)
 
 	if target then
@@ -23,8 +25,6 @@ local function ComputeProperties(self)
 	return true
 end
 
-local pg_order = {} -- Only for server
-
 local function isActive(pg)
 	return pg and pg.deployed and GetIsUnitActive(pg)
 end
@@ -35,7 +35,6 @@ function PhaseGate:OnCreate()
 		self:SetIncludeRelevancyMask(0)
 		self.timeOfLastPhase = -1000
 		table.insert(pg_order, self:GetId())
-		self.pg_index = #pg_order
 	end
 	old(self)
 	InitMixin(self, OrdersMixin, {kMoveOrderCompleteDistance = kAIMoveOrderCompleteDistance})
@@ -45,16 +44,14 @@ local old = PhaseGate.OnInitialized
 function PhaseGate:OnInitialized()
 	old(self)
 	if not Server then
-		self:AddFieldWatcher("targetPG", ComputeProperties)
+		self:AddFieldWatcher("targetPG", computeProperties)
 	end
 end
 
 local old = assert(PhaseGate.OnDestroy)
 function PhaseGate:OnDestroy()
 	old(self)
-	if self.pgindex then
-		table.remove(pg_order, self.pgindex)
-	end
+	table.removevalue(pg_order, self:GetId())
 end
 
 function PhaseGate:OnOverrideOrder(order)
@@ -66,45 +63,48 @@ end
 function PhaseGate:Update()
 	if not self.timeOfLastPhase then self.timeOfLastPhase = -1000 end
 	self.phase = Shared.GetTime() < self.timeOfLastPhase + 0.3
+end
 
-	if self.deployed and GetIsUnitActive(self) then
-		local i = self.pg_index
-		while true do
-			if i == #pg_order then
-				i = 1
-			else
-				i = i + 1
-			end
-			if i == self.pg_index then
-				self.linked = false
-				break
-			else
-				local pg = Shared.GetEntity(pg_order[i])
-				if pg and pg.deployed and GetIsUnitActive(pg) then
-					local new = pg_order[i]
-					if new ~= self.targetPG then
-						self.targetPG = new
-						ComputeProperties(self)
-					end
-					self.linked = true
-					break
+local last = -1000
+Event.Hook("UpdateServer", function()
+	if Shared.GetTime() - last < .1 then return end
+
+	local stop = #pg_order
+	local last
+	for i = stop, 1, -1 do
+		local pg = Shared.GetEntity(pg_order[i])
+		if pg and pg.deployed and GetIsUnitActive(pg) then
+			last = pg
+			stop = i
+			break
+		end
+	end
+	for i = 1, stop do
+		local id = pg_order[i]
+		local pg = Shared.GetEntity(id)
+		if pg then
+			if pg.deployed and GetIsUnitActive(pg) then
+				pg.linked = true
+				if last.targetPG ~= id then
+					last.targetPG = id
+					computeProperties(last)
 				end
+				last = pg
+			else
+				pg.linked = false
 			end
 		end
-	else
-		self.linked = false
 	end
-
-	return true
-end
+end)
 
 function PhaseGate:OnOrderChanged()
 	local order = self:GetCurrentOrder()
 	if order ~= nil then
 		if order:GetType() == kTechId.SetTarget then
 			local target = Shared.GetEntity(order:GetParam())
-			if target and target:isa "PhaseGate" then
-				table.insert(pg_order, self.pg_index+1, table.remove(pg_order, target.pg_index))
+			if target and target:isa "PhaseGate" and target ~= self then
+				table.removevalue(pg_order, target:GetId())
+				table.insert(pg_order, table.find(pg_order, self:GetId())+1, target:GetId())
 			end
 			self:CompletedCurrentOrder()
 		else
@@ -121,7 +121,6 @@ function PhaseGate:GetTechButtons()
 end
 
 function PhaseGate:GetConnectionEndPoint()
-	local target = Shared.GetEntity(self.targetPG)
 	if self.linked then
 		return self.destinationEndpoint
 	end
