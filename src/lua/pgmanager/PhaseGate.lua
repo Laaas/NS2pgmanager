@@ -126,6 +126,19 @@ function PhaseGate:GetConnectionEndPoint()
 	end
 end
 
+function PhaseGate:GetDestinationLocationName()
+	local a = Shared.GetEntity(self.destLocationId)
+	local target = Shared.GetEntity(self.targetPG)
+	local b = target and Shared.GetEntity(target.destLocationId)
+	if a then
+		if b then
+			return a:GetName() .. "\n" .. b:GetName()
+		else
+			return a:GetName()
+		end
+	end
+end
+
 local old = PhaseGate.SetIncludeRelevancyMask
 function PhaseGate:SetIncludeRelevancyMask(mask)
 	old(self, bit.bor(mask, kRelevantToTeam1Unit))
