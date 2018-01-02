@@ -40,18 +40,28 @@ function PhaseGate:OnCreate()
 	InitMixin(self, OrdersMixin, {kMoveOrderCompleteDistance = kAIMoveOrderCompleteDistance})
 end
 
-local old = PhaseGate.OnInitialized
-function PhaseGate:OnInitialized()
-	old(self)
-	if not Server then
+if not Server then
+	local old = PhaseGate.OnInitialized
+	function PhaseGate:OnInitialized()
+		old(self)
 		self:AddFieldWatcher("targetPG", computeProperties)
 	end
 end
 
-local old = assert(PhaseGate.OnDestroy)
-function PhaseGate:OnDestroy()
-	old(self)
-	table.removevalue(pg_order, self:GetId())
+if Server then
+	local old = assert(PhaseGate.OnDestroy)
+	function PhaseGate:OnDestroy()
+		old(self)
+		table.removevalue(pg_order, self:GetId())
+		Log("Destroyed %s", self:GetId())
+		if self.connectorId then
+			local connector = Shared.GetEntity(self.connectorId)
+			if connector then
+				DestroyEntity(connector)
+			end
+			self.connectorId = nil
+		end
+	end
 end
 
 function PhaseGate:OnOverrideOrder(order)
