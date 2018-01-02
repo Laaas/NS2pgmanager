@@ -1,6 +1,7 @@
 local netvars = gModClassMap.PhaseGate.networkVars
 netvars.destLocationId      = nil
 netvars.destinationEndpoint = nil
+netvars.targetYaw           = nil
 netvars.targetPG            = "entityid"
 
 AddMixinNetworkVars(OrdersMixin, netvars)
@@ -36,6 +37,9 @@ function PhaseGate:OnCreate()
 		self.timeOfLastPhase = -1000
 		table.insert(pg_order, self:GetId())
 	end
+	self.destinationEndpoint = Vector()
+	self.targetYaw = 0
+	self.destLocationId = Entity.invalidId
 	old(self)
 	InitMixin(self, OrdersMixin, {kMoveOrderCompleteDistance = kAIMoveOrderCompleteDistance})
 end
@@ -44,6 +48,9 @@ if not Server then
 	local old = PhaseGate.OnInitialized
 	function PhaseGate:OnInitialized()
 		old(self)
+		self.destinationEndpoint = Vector()
+		self.targetYaw = 0
+		self.destLocationId = Entity.invalidId
 		self:AddFieldWatcher("targetPG", computeProperties)
 	end
 end
