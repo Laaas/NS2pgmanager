@@ -140,7 +140,7 @@ end
 function PhaseGate:GetDestinationLocationName()
 	local a = Shared.GetEntity(self.destLocationId)
 	local target = Shared.GetEntity(self.targetPG)
-	local b = target and target ~= self and Shared.GetEntity(target.destLocationId)
+	local b = target and target ~= self and target.destLocationId and Shared.GetEntity(target.destLocationId)
 	if a then
 		if b then
 			return a:GetName() .. "\n" .. b:GetName()
