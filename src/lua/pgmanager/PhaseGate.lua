@@ -53,14 +53,6 @@ if Server then
 	function PhaseGate:OnDestroy()
 		old(self)
 		table.removevalue(pg_order, self:GetId())
-		Log("Destroyed %s", self:GetId())
-		if self.connectorId then
-			local connector = Shared.GetEntity(self.connectorId)
-			if connector then
-				DestroyEntity(connector)
-			end
-			self.connectorId = nil
-		end
 	end
 end
 
@@ -87,6 +79,8 @@ Event.Hook("UpdateServer", function()
 			last = pg
 			stop = i
 			break
+		else
+			pg.linked = false
 		end
 	end
 	for i = 1, stop do
