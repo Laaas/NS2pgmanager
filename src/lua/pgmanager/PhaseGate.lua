@@ -90,19 +90,24 @@ Event.Hook("UpdateServer", function()
 			pg.linked = false
 		end
 	end
-	for i = 1, stop do
-		local id = pg_order[i]
-		local pg = Shared.GetEntity(id)
-		if pg then
-			if pg.deployed and GetIsUnitActive(pg) then
-				pg.linked = true
-				if last.targetPG ~= id then
-					last.targetPG = id
-					computeProperties(last)
+
+	if stop == 1 and last then
+		last.linked = false
+	else
+		for i = 1, stop do
+			local id = pg_order[i]
+			local pg = Shared.GetEntity(id)
+			if pg then
+				if pg.deployed and GetIsUnitActive(pg) then
+					pg.linked = true
+					if last.targetPG ~= id then
+						last.targetPG = id
+						computeProperties(last)
+					end
+					last = pg
+				else
+					pg.linked = false
 				end
-				last = pg
-			else
-				pg.linked = false
 			end
 		end
 	end
