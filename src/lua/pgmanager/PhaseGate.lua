@@ -143,13 +143,15 @@ function PhaseGate:GetConnectionEndPoint()
 end
 
 function PhaseGate:GetDestinationLocationName()
+	if not self.targetPG then return end
+
 	local target = Shared.GetEntity(self.targetPG)
-	local target_target = target and Shared.GetEntity(target.targetPG)
+	local target_target = target and target.targetPG and Shared.GetEntity(target.targetPG)
 	if target then
-		local a = Shared.GetEntity(self.destLocationId)
+		local a = self.destLocationId and Shared.GetEntity(self.destLocationId)
 		a = a and a:GetName() or "<unknown>"
 		if target_target and target_target ~= self then
-			local b = Shared.GetEntity(target.destLocationId)
+			local b = target.destLocationId and Shared.GetEntity(target.destLocationId)
 			b = b and b:GetName() or "<unknown>"
 			return a .. "\n" .. b
 		else
